@@ -6,7 +6,7 @@ import dns.rdtypes.ANY
 from dns.rdtypes.ANY.MX import MX
 from dns.rdtypes.ANY.SOA import SOA
 import dns.rdata
-import dns.rrset  # added
+import dns.rrset #added
 import socket
 import threading
 import signal
@@ -31,27 +31,27 @@ def generate_aes_key(password, salt):
     key = base64.urlsafe_b64encode(key)
     return key
 
-# Lookup details on fernet in the cryptography.io documentation    
+# Lookup details on fernet in the cryptography.io documentation
 def encrypt_with_aes(input_string, password, salt):
     key = generate_aes_key(password, salt)
     f = Fernet(key)
-    encrypted_data = f.encrypt(input_string.encode('utf-8'))  # call the Fernet encrypt method
-    return encrypted_data    
+    encrypted_data = f.encrypt(input_string.encode('utf-8')) #call the Fernet encrypt method
+    return encrypted_data
 
 def decrypt_with_aes(encrypted_data, password, salt):
     key = generate_aes_key(password, salt)
     f = Fernet(key)
-    decrypted_data = f.decrypt(encrypted_data)  # call the Fernet decrypt method
+    decrypted_data = f.decrypt(encrypted_data) #call the Fernet decrypt method
     return decrypted_data.decode('utf-8')
 
-salt = b'Tandon'  # Remember it should be a byte-object
+salt = b'Tandon' # Remember it should be a byte-object
 password = "mrt440@nyu.edu"
 input_string = "AlwaysWatching"
 
-encrypted_value = encrypt_with_aes(input_string, password, salt)  # exfil function
+encrypted_value = encrypt_with_aes(input_string, password, salt) # exfil function
 # decrypted_value = decrypt_with_aes(encrypted_value, password, salt)  # exfil function
 
-# For future use    
+# For future use
 def generate_sha256_hash(input_string):
     sha256_hash = hashlib.sha256()
     sha256_hash.update(input_string.encode('utf-8'))
@@ -95,7 +95,7 @@ dns_records = {
 
     'nyu.edu.': {
         dns.rdatatype.A: '192.168.1.106',
-        dns.rdatatype.TXT: (encrypted_value.decode(),),  # FIXED: raw string only
+        dns.rdatatype.TXT: (encrypted_value.decode(),),  # store clean string
         dns.rdatatype.MX: [(10, 'mxa-00256a01.gslb.pphosted.com.')],
         dns.rdatatype.AAAA: '2001:0db8:85a3:0000:0000:8a2e:0373:7312',
         dns.rdatatype.NS: 'ns1.nyu.edu.',
@@ -105,7 +105,7 @@ dns_records = {
 def run_dns_server():
     # Create a UDP socket and bind it to the local IP address and port
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.bind(("127.0.0.1", 8053))  # use 8053 for local testing
+    server_socket.bind(("127.0.0.1", 53))
 
     while True:
         try:
@@ -148,10 +148,13 @@ def run_dns_server():
                     rdata_list.append(rdata)
 
                 else:
-                    # FIXED TXT handling
                     if qtype == dns.rdatatype.TXT:
                         rdata_list = [
-                            dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{data}"')
+                            dns.rdata.from_text(
+                                dns.rdataclass.IN,
+                                qtype,
+                                f'"{data}"'   # FIX: quotes applied HERE only
+                            )
                             for data in answer_data
                         ]
                     else:
@@ -192,8 +195,5 @@ def run_dns_server_user():
     input_thread.start()
     run_dns_server()
 
-
 if __name__ == '__main__':
     run_dns_server_user()
-    # print("Encrypted Value:", encrypted_value)
-    # print("Decrypted Value:", decrypted_value)
